@@ -67,7 +67,10 @@ exports.handler = async function (event) {
       body: JSON.stringify({
         contents,
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        generationConfig: { maxOutputTokens: 400 }
+        generationConfig: {
+          maxOutputTokens: 400,
+          thinkingConfig: { thinkingLevel: 'low' }
+        }
       }),
       signal: controller.signal
     });
