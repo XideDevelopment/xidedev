@@ -39,7 +39,7 @@ exports.handler = async function (event) {
   }));
   contents.push({ role: 'user', parts: [{ text: message }] });
 
-  const model = 'gemini-2.5-flash';
+  const model = 'gemini-3.6-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   try {
