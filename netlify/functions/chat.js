@@ -40,23 +40,31 @@ exports.handler = async function (event) {
   contents.push({ role: 'user', parts: [{ text: message }] });
 
   const model = 'gemini-3.6-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
       body: JSON.stringify({
         contents,
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         generationConfig: { maxOutputTokens: 400 }
-      })
+      }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errText = await response.text();
       console.error('Gemini API error:', response.status, errText);
-      return { statusCode: 502, body: JSON.stringify({ error: 'Gagal menghubungi AI' }) };
+      return { statusCode: 502, body: JSON.stringify({ error: 'Gagal menghubungi AI', detail: errText.slice(0,300) }) };
     }
 
     const data = await response.json();
@@ -69,7 +77,8 @@ exports.handler = async function (event) {
       body: JSON.stringify({ reply })
     };
   } catch (err) {
-    console.error('Chat handler error:', err);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Terjadi kesalahan server' }) };
+    console.error('Chat handler error:', err.name, err.message);
+    const isTimeout = err.name === 'AbortError';
+    return { statusCode: 500, body: JSON.stringify({ error: isTimeout ? 'Timeout menghubungi AI' : 'Terjadi kesalahan server', detail: err.message }) };
   }
 };
