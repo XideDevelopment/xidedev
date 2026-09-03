@@ -1775,7 +1775,9 @@ async function sendChat() {
       body: JSON.stringify({
         message: text,
         // kirim history secukupnya aja (10 pesan terakhir) biar hemat token
-        history: chatHistory.slice(-10).map(m => ({
+        // slice(0,-1) buang pesan yang baru aja diketik (udah ke-push ke chatHistory
+        // duluan sama addChatMsg di atas) - soalnya itu udah dikirim terpisah lewat "message"
+        history: chatHistory.slice(0, -1).slice(-10).map(m => ({
           role: m.role === 'ai' ? 'assistant' : 'user',
           content: m.text
         }))

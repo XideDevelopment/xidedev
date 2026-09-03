@@ -33,11 +33,23 @@ exports.handler = async function (event) {
   }
 
   // Gemini pakai format "contents" dengan role user/model (bukan user/assistant)
-  const contents = (Array.isArray(history) ? history : []).map(m => ({
+  const rawContents = (Array.isArray(history) ? history : []).map(m => ({
     role: m.role === 'assistant' || m.role === 'ai' ? 'model' : 'user',
     parts: [{ text: m.content }]
   }));
-  contents.push({ role: 'user', parts: [{ text: message }] });
+  rawContents.push({ role: 'user', parts: [{ text: message }] });
+
+  // Gemini mewajibkan role user/model gantian - kalau ada 2 giliran sama beruntun
+  // (misal karena bug di frontend), gabungin jadi satu biar request tetap valid
+  const contents = [];
+  for (const turn of rawContents) {
+    const last = contents[contents.length - 1];
+    if (last && last.role === turn.role) {
+      last.parts[0].text += '\n' + turn.parts[0].text;
+    } else {
+      contents.push(turn);
+    }
+  }
 
   const model = 'gemini-3.6-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
