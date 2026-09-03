@@ -1,6 +1,6 @@
 // netlify/functions/chat.js
-// Backend proxy ke Google Gemini API. API key disimpan di environment variable
-// (GEMINI_API_KEY) yang di-set di dashboard Netlify — TIDAK PERNAH
+// Backend proxy ke Groq API. API key disimpan di environment variable
+// (GROQ_API_KEY) yang di-set di dashboard Netlify — TIDAK PERNAH
 // terlihat oleh browser/user.
 
 const SYSTEM_PROMPT = `Kamu adalah Xide, teman AI yang hangat, suportif, dan jadi pendengar yang baik di aplikasi self-care bernama XideDev.
@@ -26,51 +26,37 @@ exports.handler = async function (event) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Pesan kosong' }) };
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    console.error('GEMINI_API_KEY belum di-set di Netlify environment variables');
+    console.error('GROQ_API_KEY belum di-set di Netlify environment variables');
     return { statusCode: 500, body: JSON.stringify({ error: 'Server belum dikonfigurasi' }) };
   }
 
-  // Gemini pakai format "contents" dengan role user/model (bukan user/assistant)
-  const rawContents = (Array.isArray(history) ? history : []).map(m => ({
-    role: m.role === 'assistant' || m.role === 'ai' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }));
-  rawContents.push({ role: 'user', parts: [{ text: message }] });
-
-  // Gemini mewajibkan role user/model gantian - kalau ada 2 giliran sama beruntun
-  // (misal karena bug di frontend), gabungin jadi satu biar request tetap valid
-  const contents = [];
-  for (const turn of rawContents) {
-    const last = contents[contents.length - 1];
-    if (last && last.role === turn.role) {
-      last.parts[0].text += '\n' + turn.parts[0].text;
-    } else {
-      contents.push(turn);
-    }
+  // Groq pakai format OpenAI-compatible: messages dengan role system/user/assistant
+  const messages = [{ role: 'system', content: SYSTEM_PROMPT }];
+  for (const m of (Array.isArray(history) ? history : [])) {
+    messages.push({
+      role: m.role === 'assistant' || m.role === 'ai' ? 'assistant' : 'user',
+      content: m.content
+    });
   }
-
-  const model = 'gemini-3.6-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  messages.push({ role: 'user', content: message });
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-    const response = await fetch(url, {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        contents,
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        generationConfig: {
-          maxOutputTokens: 400,
-          thinkingConfig: { thinkingLevel: 'low' }
-        }
+        model: 'openai/gpt-oss-120b',
+        messages,
+        max_tokens: 400,
+        temperature: 0.8
       }),
       signal: controller.signal
     });
@@ -78,12 +64,12 @@ exports.handler = async function (event) {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('Gemini API error:', response.status, errText);
+      console.error('Groq API error:', response.status, errText);
       return { statusCode: 502, body: JSON.stringify({ error: 'Gagal menghubungi AI', detail: errText.slice(0,300) }) };
     }
 
     const data = await response.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text
+    const reply = data?.choices?.[0]?.message?.content
       || 'Maaf, Xide belum bisa jawab itu sekarang.';
 
     return {
