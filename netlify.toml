@@ -6,3 +6,33 @@
   from = "/api/chat"
   to = "/.netlify/functions/chat"
   status = 200
+
+[[redirects]]
+  from = "/api/request-premium"
+  to = "/.netlify/functions/request-premium"
+  status = 200
+
+[[redirects]]
+  from = "/api/check-premium-status"
+  to = "/.netlify/functions/check-premium-status"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin-login"
+  to = "/.netlify/functions/admin-login"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin-list"
+  to = "/.netlify/functions/admin-list"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin-approve"
+  to = "/.netlify/functions/admin-approve"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/.netlify/functions/admin-page"
+  status = 200
