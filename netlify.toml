@@ -2,6 +2,9 @@
   functions = "netlify/functions"
   publish = "."
 
+[functions]
+  external_node_modules = ["@netlify/blobs"]
+
 [[redirects]]
   from = "/api/chat"
   to = "/.netlify/functions/chat"
