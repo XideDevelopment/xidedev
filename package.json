@@ -2,5 +2,8 @@
   "name": "xidedev",
   "version": "1.0.0",
   "private": true,
-  "description": "XideDev - self-care companion app"
+  "description": "XideDev - self-care companion app",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
 }
