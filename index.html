@@ -916,6 +916,11 @@ button:active,.btn-p:active,.btn-g:active,.mood-btn:active,.mood-option:active,
           <h2>XideDev Premium</h2>
           <p>Jadikan Xide companion jangka panjangmu</p>
         </div>
+        <div id="premium-active-banner" style="display:none;background:rgba(78,205,196,.1);border:1.5px solid var(--teal);border-radius:14px;padding:16px;text-align:center;margin-bottom:16px;">
+          <div style="font-size:1.4rem;">✨</div>
+          <div style="font-weight:700;color:var(--teal);margin-top:4px;">Kamu udah Premium!</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:2px;">Makasih udah dukung XideDev 💚</div>
+        </div>
         <div class="sub-plans">
           <div class="sub-plan">
             <div class="sub-plan-name">Free</div>
@@ -954,22 +959,31 @@ button:active,.btn-p:active,.btn-g:active,.mood-btn:active,.mood-option:active,
               <li>Advanced Insights</li>
               <li>Premium Growth System</li>
             </ul>
-            <button class="btn-p" style="width:100%;" onclick="showPayment()">Mulai Premium →</button>
+            <button class="btn-p" style="width:100%;" id="premium-cta-btn" onclick="startPremiumRequest()">Mulai Premium →</button>
           </div>
         </div>
+
         <div class="pay-methods" id="pay-methods" style="display:none;">
-          <div class="pay-title">💳 Pilih Metode Pembayaran</div>
-          <div class="pay-grid">
-            <div class="pay-btn" onclick="selectPay('GoPay')">🟢 GoPay</div>
-            <div class="pay-btn" onclick="selectPay('Dana')">🔵 Dana</div>
-            <div class="pay-btn" onclick="selectPay('OVO')">🟣 OVO</div>
-            <div class="pay-btn" onclick="selectPay('ShopeePay')">🟠 ShopeePay</div>
-            <div class="pay-btn" onclick="selectPay('BCA')">🏦 BCA</div>
-            <div class="pay-btn" onclick="selectPay('BRI')">🏦 BRI</div>
+          <div id="pay-step-code" style="display:none;">
+            <p style="font-size:.85rem;color:var(--text);text-align:center;margin-bottom:10px;">
+              1. Salin kode unik ini, cantumkan di <strong>catatan/pesan donasi</strong> pas bayar di SociaBuzz:
+            </p>
+            <div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:14px;">
+              <div id="premium-code-display" style="font-family:monospace;font-size:1.3rem;font-weight:700;letter-spacing:1px;background:var(--bg2);border:1.5px solid var(--teal);border-radius:10px;padding:10px 16px;color:var(--teal);"></div>
+              <button class="btn-g" onclick="copyPremiumCode()" style="padding:10px 14px;">📋 Salin</button>
+            </div>
+            <p style="font-size:.85rem;color:var(--text);text-align:center;margin-bottom:10px;">
+              2. Bayar Rp 25.000 di halaman SociaBuzz kami:
+            </p>
+            <a href="https://sociabuzz.com/xideanimation" target="_blank" rel="noopener" class="btn-p" style="display:block;width:100%;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:14px;">
+              Buka SociaBuzz →
+            </a>
+            <p style="font-size:.85rem;color:var(--text);text-align:center;margin-bottom:8px;">
+              3. Setelah bayar, tunggu verifikasi (biasanya nggak lama). Cek status:
+            </p>
+            <button class="btn-g" style="width:100%;" onclick="checkPremiumStatus()" id="check-status-btn">🔄 Cek Status Pembayaran</button>
+            <p id="pay-status-text" style="font-size:.78rem;color:var(--muted);text-align:center;margin-top:10px;"></p>
           </div>
-          <p style="font-size:.78rem;color:var(--muted);text-align:center;margin-top:14px;">
-            Setelah memilih, kamu akan diarahkan ke instruksi pembayaran. Konfirmasi via DM/WA setelah transfer.
-          </p>
         </div>
       </div>
 
@@ -1208,6 +1222,7 @@ function initApp() {
   renderTimeline('day'); renderGoals(); updateGrowthTree();
   initChat();
   setOC('mood-oc','think'); setOC('sleep-oc','sleepy');
+  refreshPremiumUI();
 }
 
 // ═══ THEME ═══
@@ -1245,6 +1260,7 @@ function goTo(screen) {
   if(screen==='timeline') renderTimeline('day');
   if(screen==='goals') renderGoals();
   if(screen==='growth') updateGrowthTree();
+  if(screen==='subscription') refreshPremiumUI();
 }
 
 // ═══ GREETING ═══
@@ -1735,6 +1751,10 @@ function updateGoalProgress(id, delta) {
 }
 
 // ═══ CHAT ═══
+// Token ini BUKAN rahasia yang benar-benar aman (siapapun bisa lihat lewat "view source"),
+// tapi cukup buat nyaring bot/script asal yang nembak /api/chat langsung tanpa buka
+// website ini dulu. Kalau ganti value ini, jangan lupa update juga env var APP_TOKEN di Netlify.
+const XIDE_APP_TOKEN = 'lG6t3T3uEexOd8DSFjhhB4waL2Rktwo3';
 let chatHistory = [];
 function initChat() {
   chatHistory = S.get('chatHistory')||[];
@@ -1771,7 +1791,10 @@ async function sendChat() {
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'X-App-Token': XIDE_APP_TOKEN
+      },
       body: JSON.stringify({
         message: text,
         // kirim history secukupnya aja (10 pesan terakhir) biar hemat token
@@ -1818,14 +1841,106 @@ function updateGrowthTree() {
   document.getElementById('tree-xp-text').textContent = `${xp} / ${level.max} XP`;
 }
 
-// ═══ SUBSCRIPTION ═══
-function showPayment() {
-  const pm = document.getElementById('pay-methods');
-  pm.style.display = pm.style.display==='none'?'block':'none';
-  pm.scrollIntoView({behavior:'smooth'});
+// ═══ SUBSCRIPTION / PAYMENT ═══
+function isPremium() { return !!S.get('premium'); }
+
+function refreshPremiumUI() {
+  const banner = document.getElementById('premium-active-banner');
+  const btn = document.getElementById('premium-cta-btn');
+  if (isPremium()) {
+    if (banner) banner.style.display = 'block';
+    if (btn) { btn.textContent = 'Kamu udah Premium ✨'; btn.disabled = true; btn.style.opacity = '.6'; btn.style.cursor = 'default'; }
+  } else {
+    if (banner) banner.style.display = 'none';
+    if (btn) { btn.textContent = 'Mulai Premium →'; btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+    // kalau user udah punya kode pending dari sebelumnya, langsung tampilin lagi
+    const existingCode = S.get('premiumCode');
+    if (existingCode) {
+      document.getElementById('pay-methods').style.display = 'block';
+      document.getElementById('pay-step-code').style.display = 'block';
+      document.getElementById('premium-code-display').textContent = existingCode;
+    }
+  }
 }
-function selectPay(method) {
-  showToast(`Metode ${method} dipilih! Hubungi admin untuk konfirmasi pembayaran.`);
+
+async function startPremiumRequest() {
+  if (isPremium()) return;
+  const payBox = document.getElementById('pay-methods');
+  const stepCode = document.getElementById('pay-step-code');
+  const statusText = document.getElementById('pay-status-text');
+  payBox.style.display = 'block';
+  payBox.scrollIntoView({behavior:'smooth'});
+
+  // kalau user udah pernah generate kode sebelumnya (belum di-approve), pake yang lama aja
+  let code = S.get('premiumCode');
+  if (!code) {
+    statusText.textContent = 'Menyiapkan kode unik...';
+    try {
+      const res = await fetch('/api/request-premium', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-App-Token': XIDE_APP_TOKEN },
+        body: JSON.stringify({})
+      });
+      if (!res.ok) throw new Error('Gagal request: ' + res.status);
+      const data = await res.json();
+      if (!data.code) throw new Error('Kode tidak diterima');
+      code = data.code;
+      S.set('premiumCode', code);
+    } catch (err) {
+      console.error(err);
+      statusText.textContent = 'Waduh, gagal menyiapkan kode. Coba lagi sebentar ya.';
+      return;
+    }
+  }
+
+  document.getElementById('premium-code-display').textContent = code;
+  stepCode.style.display = 'block';
+  statusText.textContent = '';
+}
+
+function copyPremiumCode() {
+  const code = document.getElementById('premium-code-display').textContent;
+  navigator.clipboard?.writeText(code).then(() => {
+    showToast('Kode disalin! 📋');
+  }).catch(() => {
+    showToast('Gagal menyalin, coba salin manual ya.');
+  });
+}
+
+async function checkPremiumStatus() {
+  const code = S.get('premiumCode');
+  const statusText = document.getElementById('pay-status-text');
+  const btn = document.getElementById('check-status-btn');
+  if (!code) return;
+
+  btn.disabled = true;
+  statusText.textContent = 'Mengecek status...';
+
+  try {
+    const res = await fetch('/api/check-premium-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Token': XIDE_APP_TOKEN },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+
+    if (data.premium) {
+      S.set('premium', true);
+      S.set('premiumCode', null);
+      refreshPremiumUI();
+      document.getElementById('pay-methods').style.display = 'none';
+      showToast('Premium aktif! Makasih udah dukung XideDev 💚');
+    } else if (data.status === 'rejected') {
+      statusText.textContent = 'Pembayaran belum ketemu/ditolak. Kalau ini keliru, hubungi kami ya.';
+    } else {
+      statusText.textContent = 'Belum terverifikasi. Pastikan kode udah dicantumkan di catatan donasi, lalu coba cek lagi beberapa saat.';
+    }
+  } catch (err) {
+    console.error(err);
+    statusText.textContent = 'Gagal mengecek status. Coba lagi sebentar ya.';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ═══ REMINDER ═══
