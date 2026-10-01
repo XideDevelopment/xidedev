@@ -11,11 +11,6 @@
   status = 200
 
 [[redirects]]
-  from = "/api/request-premium"
-  to = "/.netlify/functions/request-premium"
-  status = 200
-
-[[redirects]]
   from = "/api/check-premium-status"
   to = "/.netlify/functions/check-premium-status"
   status = 200

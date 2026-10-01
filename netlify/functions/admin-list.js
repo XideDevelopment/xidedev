@@ -2,7 +2,7 @@
 // Nampilin semua kode premium-request (pending + yang udah diapprove) buat
 // halaman admin. Butuh session token dari admin-login.js yang masih valid.
 
-const { getStore } = require('@netlify/blobs');
+const { getPremiumStore } = require('../lib/blob-store');
 const { isValidAdminSession } = require('../lib/admin-auth');
 
 exports.handler = async function (event) {
@@ -15,7 +15,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    const store = getStore({ name: 'premium-requests', consistency: 'strong' });
+    const store = getPremiumStore();
     const { blobs } = await store.list();
 
     const items = await Promise.all(

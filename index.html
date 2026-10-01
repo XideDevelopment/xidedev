@@ -1863,39 +1863,30 @@ function refreshPremiumUI() {
   }
 }
 
-async function startPremiumRequest() {
+function generatePremiumCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // tanpa 0/O/1/I biar nggak ketuker
+  let code = 'XD-';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function startPremiumRequest() {
   if (isPremium()) return;
   const payBox = document.getElementById('pay-methods');
   const stepCode = document.getElementById('pay-step-code');
-  const statusText = document.getElementById('pay-status-text');
-  payBox.style.display = 'block';
-  payBox.scrollIntoView({behavior:'smooth'});
 
   // kalau user udah pernah generate kode sebelumnya (belum di-approve), pake yang lama aja
   let code = S.get('premiumCode');
   if (!code) {
-    statusText.textContent = 'Menyiapkan kode unik...';
-    try {
-      const res = await fetch('/api/request-premium', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-App-Token': XIDE_APP_TOKEN },
-        body: JSON.stringify({})
-      });
-      if (!res.ok) throw new Error('Gagal request: ' + res.status);
-      const data = await res.json();
-      if (!data.code) throw new Error('Kode tidak diterima');
-      code = data.code;
-      S.set('premiumCode', code);
-    } catch (err) {
-      console.error(err);
-      statusText.textContent = 'Waduh, gagal menyiapkan kode. Coba lagi sebentar ya.';
-      return;
-    }
+    code = generatePremiumCode();
+    S.set('premiumCode', code);
   }
 
   document.getElementById('premium-code-display').textContent = code;
+  payBox.style.display = 'block';
   stepCode.style.display = 'block';
-  statusText.textContent = '';
+  document.getElementById('pay-status-text').textContent = '';
+  payBox.scrollIntoView({behavior:'smooth'});
 }
 
 function copyPremiumCode() {
@@ -1942,6 +1933,7 @@ async function checkPremiumStatus() {
     btn.disabled = false;
   }
 }
+
 
 // ═══ REMINDER ═══
 function toggleReminder(el) { el.classList.toggle('on'); }

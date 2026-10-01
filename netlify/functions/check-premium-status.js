@@ -1,8 +1,11 @@
 // netlify/functions/check-premium-status.js
-// Dipanggil dari browser user (berkala/pas buka halaman Premium lagi) buat
-// ngecek apa kode unik mereka udah di-approve sama admin atau belum.
+// Dipanggil dari browser user. Karena kode unik sekarang di-generate di
+// BROWSER (client-side, lihat index.html), function ini melakukan
+// "get-or-create": kalau kode belum pernah terdaftar, dia didaftarkan
+// sebagai "pending" saat ini (kunjungan pertama). Kalau sudah terdaftar,
+// dia cuma ngecek status yang ada.
 
-const { getStore } = require('@netlify/blobs');
+const { getPremiumStore } = require('../lib/blob-store');
 
 exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') {
@@ -23,16 +26,18 @@ exports.handler = async function (event) {
   }
 
   const { code } = body;
-  if (!code || typeof code !== 'string') {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Kode wajib diisi' }) };
+  if (!code || typeof code !== 'string' || !/^XD-[A-Z0-9]{6}$/.test(code)) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Format kode tidak valid' }) };
   }
 
   try {
-    const store = getStore({ name: 'premium-requests', consistency: 'strong' });
-    const data = await store.get(code.toUpperCase().trim(), { type: 'json' });
+    const store = getPremiumStore();
+    let data = await store.get(code, { type: 'json' });
 
     if (!data) {
-      return { statusCode: 200, headers: {'Content-Type':'application/json'}, body: JSON.stringify({ found: false, premium: false }) };
+      // kunjungan pertama buat kode ini - daftarkan sebagai pending
+      data = { status: 'pending', createdAt: new Date().toISOString() };
+      await store.setJSON(code, data);
     }
 
     return {

@@ -2,7 +2,7 @@
 // Approve atau reject satu kode premium-request. Butuh session token dari
 // admin-login.js yang masih valid.
 
-const { getStore } = require('@netlify/blobs');
+const { getPremiumStore } = require('../lib/blob-store');
 const { isValidAdminSession } = require('../lib/admin-auth');
 
 exports.handler = async function (event) {
@@ -27,7 +27,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    const store = getStore({ name: 'premium-requests', consistency: 'strong' });
+    const store = getPremiumStore();
     const existing = await store.get(code, { type: 'json' });
     if (!existing) {
       return { statusCode: 404, body: JSON.stringify({ error: 'Kode tidak ditemukan' }) };
